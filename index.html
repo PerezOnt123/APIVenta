@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ventas API</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
+        button { margin: 5px; padding: 10px; cursor: pointer; }
+        input { margin: 5px; padding: 5px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { border: 1px solid black; padding: 10px; text-align: left; }
+    </style>
+</head>
+<body>
+    <h1>Prueba de Ventas API</h1>
+    <input type="text" id="folio" placeholder="Folio">
+    <input type="date" id="fecha">
+    <input type="number" id="cantidad" placeholder="Cantidad" step="0.01">
+    <input type="number" id="total" placeholder="Total" step="0.01">
+    <button onclick="agregarVenta()">Agregar Venta</button>
+    <button onclick="obtenerVentas()">Obtener Ventas</button>
+    <table>
+        <thead>
+            <tr>
+                <th>Folio</th>
+                <th>Fecha</th>
+                <th>Cantidad</th>
+                <th>Total</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody id="tabla-ventas"></tbody>
+    </table>
+
+    <script>
+        const apiUrl = "http://localhost:5000/api/ventas";
+
+        async function obtenerVentas() {
+            try {
+                const response = await fetch(apiUrl);
+                if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+                const ventas = await response.json();
+                const tabla = document.getElementById('tabla-ventas');
+                tabla.innerHTML = '';
+                ventas.forEach(venta => {
+                    const row = `<tr>
+                        <td>${venta.folio}</td>
+                        <td>${new Date(venta.fecha).toLocaleDateString()}</td>
+                        <td>${venta.cantidad}</td>
+                        <td>${venta.total.toFixed(2)}</td>
+                        <td><button onclick="eliminarVenta('${venta.folio}')">Eliminar</button></td>
+                    </tr>`;
+                    tabla.innerHTML += row;
+                });
+            } catch (error) {
+                console.error('Error obteniendo ventas:', error);
+                alert('Error obteniendo ventas. Verifica que la API está en funcionamiento.');
+            }
+        }
+
+        async function agregarVenta() {
+            const folio = document.getElementById('folio').value.trim();
+            const fecha = document.getElementById('fecha').value;
+            const cantidad = parseFloat(document.getElementById('cantidad').value);
+            const total = parseFloat(document.getElementById('total').value);
+            
+            if (!folio || !fecha || isNaN(cantidad) || isNaN(total)) {
+                alert('Todos los campos son obligatorios');
+                return;
+            }
+            
+            const nuevaVenta = { 
+                folio, 
+                fecha, 
+                cantidad, 
+                total 
+            };
+            
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(nuevaVenta)
+                });
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP error! Status: ${response.status}, Message: ${errorText}`);
+                }
+                document.getElementById('folio').value = '';
+                document.getElementById('fecha').value = '';
+                document.getElementById('cantidad').value = '';
+                document.getElementById('total').value = '';
+                obtenerVentas();
+            } catch (error) {
+                console.error('Error agregando venta:', error);
+                alert(`Error agregando la venta: ${error.message}`);
+            }
+        }
+
+        async function eliminarVenta(folio) {
+            try {
+                const response = await fetch(`${apiUrl}/${folio}`, {
+                    method: 'DELETE'
+                });
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP error! Status: ${response.status}, Message: ${errorText}`);
+                }
+                obtenerVentas();
+            } catch (error) {
+                console.error('Error eliminando venta:', error);
+                alert(`Error eliminando la venta: ${error.message}`);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', obtenerVentas);
+    </script>
+</body>
+</html>
